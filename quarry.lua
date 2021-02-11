@@ -9,9 +9,42 @@ local tfacing = FACING.PX
 
 local FUEL_SLOT = 1
 
+local dumping = false
+
+function hasFuel()
+    return turtle.getFuelLevel() >= 20
+end
+
+function waitForFuel()
+    -- If no fuel, wait for it. Otherwise, proceed
+    if not hasFuel() then
+        while not hasFuel() do
+            turtle.select(FUEL_SLOT)
+            turtle.refuel()
+            turtle.dropDown() -- Empty slow after refueling (if it isn't fuel it should be emptied)
+        end
+        -- Pick up the dropped stuff
+        turtle.suckDown()
+    end
+end
+
 -- Movement helpers that update the state
 function goDown()
+    printState()
+    waitForFuel()
     local didGo = turtle.down()
+
+    if didGo then
+        y = y + 1 -- NOTE: Y axis points down!
+    end
+
+    return didGo
+end
+
+function goUp()
+    printState()
+    waitForFuel()
+    local didGo = turtle.up()
 
     if didGo then
         y = y - 1
@@ -20,17 +53,9 @@ function goDown()
     return didGo
 end
 
-function goUp()
-    local didGo = turtle.up()
-
-    if didGo then
-        y = y + 1
-    end
-
-    return didGo
-end
-
 function goForward()
+    printState()
+    waitForFuel()
     local didGo = turtle.forward()
 
     if didGo then
@@ -49,6 +74,8 @@ function goForward()
 end
 
 function goBack()
+    printState()
+    waitForFuel()
     local didGo = turtle.back()
 
     if didGo then
@@ -75,6 +102,8 @@ function rotateRight(facing)
 end
 
 function turnRight()
+    printState()
+    waitForFuel()
     local didTurn = turtle.turnRight()
     if didTurn then
         tfacing = rotateRight(tfacing)
@@ -84,6 +113,8 @@ function turnRight()
 end
 
 function turnLeft()
+    printState()
+    waitForFuel()
     local didTurn = turtle.turnLeft()
     if didTurn then
         tfacing = rotateLeft(tfacing)
@@ -113,16 +144,23 @@ function printState()
     term.write("Relative pos X Y Z: " .. x .. " " .. y .. " " .. z)
     term.setCursorPos(1, 2)
     term.write("Relative facing: " .. facingToText(tfacing))
-    termn.setCursorPos(1, 3)
-    term.write()
+    term.setCursorPos(1, 3)
+    term.write("Fuel: " .. turtle.getFuelLevel() .. " ")
+
+    if not hasFuel() then
+        term.write("NEEDS REFUELING!")
+    end
+
+    if dumping then
+        term.setCursorPos(1, 5)
+        term.write("!DUMPING PROCEDURE!")
+    end
 end
 
 -- suck twice and check if couldn't suck. In that case, empty
 function suckDownProcedure()
     turtle.suckDown()
-    local didSuck, reason = turtle.suckDown()
-
-    if string.find(reason, "space") then -- no space, must go empty stuff
+    if turtle.getItemCount(16) > 0 then
         goEmpty()
     end
 end
@@ -131,12 +169,52 @@ function goEmpty()
     local old_x = x
     local old_y = y
     local old_z = z
-    local old_facing = facing
+    local old_facing = tfacing
+
+    dumping = true
 
     -- Go back to the corner of the quarry. There will be a chest on top.
+    if x ~= 0 then
+        while tfacing ~= FACING.NX do turnRight() end
+        while x ~= 0 do goForward() end
+    end
 
-    -- Then empty the items there and go back to digging
-    turtle.
+    if z ~= 0 then
+        while tfacing ~= FACING.NZ do turnRight() end
+        while z ~= 0 do goForward() end
+    end
+
+    
+    while y ~= 0 do goUp() end
+
+    -- We're now below the chest
+    -- Empty items
+
+    for i = 1, 16, 1 do
+        turtle.select(i)
+        turtle.dropUp()
+    end
+
+    -- Go back to where we left
+    --restore height
+    while y < old_y do goDown() end
+
+    -- restore z
+    if z ~= old_z then
+        while tfacing ~= FACING.PZ do turnRight() end
+        while z <= old_z do goForward() end
+    end
+
+    -- restore x
+    if x ~= old_x then
+        while tfacing ~= FACING.PX do turnRight() end
+        while x <= old_x do goForward() end
+    end
+
+    -- restore rotation
+    while tfacing ~= old_facing do turnRight() end
+
+    dumping = false
 end
 
 function uTurnRight()
@@ -155,19 +233,18 @@ local length = 15 -- must be
 local width = 15
 local height = 15
 
-while x != length and y != height and z != width do
-    printState()
+while x ~= length and y ~= height and z ~= width do
     if x == length - 1 and z == width - 1 and tfacing == FACING.PX then -- reached a corner, should now start digging the other way
         turnLeft()
-        for i = 0, width, 1 do goForward() end
+        while z > 0 do goForward() end
         turnLeft()
-        for i = 0, length, 1 do goForward() end
+        while x > 0 do goForward() end
         turnLeft()
         turnLeft()
         goDown()
     elseif x == 0 and z == width - 1 and tfacing == FACING.NX then -- reached a corner, should now start digging the other way
         turnRight()
-        for i = 0, width, 1 do goForward() end
+        while z > 0 do goForward() end
         turnRight()
         goDown()
     elseif x + 1 >= length and tfacing == FACING.PX then
