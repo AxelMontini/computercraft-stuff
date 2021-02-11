@@ -195,6 +195,8 @@ function goEmpty()
         turtle.dropUp()
     end
 
+    turtle.select(1) -- don't forget to select slot 0, otherwise it always goes back to empty itself
+
     -- Go back to where we left
     --restore height
     while y < old_y do goDown() end
@@ -202,13 +204,13 @@ function goEmpty()
     -- restore z
     if z ~= old_z then
         while tfacing ~= FACING.PZ do turnRight() end
-        while z <= old_z do goForward() end
+        while z < old_z do goForward() end
     end
 
     -- restore x
     if x ~= old_x then
         while tfacing ~= FACING.PX do turnRight() end
-        while x <= old_x do goForward() end
+        while x < old_x do goForward() end
     end
 
     -- restore rotation
