@@ -221,12 +221,22 @@ end
 
 function uTurnRight()
     turnRight()
+
+    if turtle.detect() then
+        turtle.dig()
+    end
+
     goForward()
     turnRight()
 end
 
 function uTurnLeft()
     turnLeft()
+
+    if turtle.detect() then
+        turtle.dig()
+    end
+    
     goForward()
     turnLeft()
 end
@@ -263,6 +273,10 @@ while x ~= length and y ~= height and z ~= width do
         -- Dig and suck, then move forward and turn if necessary
         turtle.digDown()
         suckDownProcedure()
+
+        if turtle.detect() then
+            turtle.dig()
+        end
 
         goForward()
     end
