@@ -3,7 +3,7 @@ local x = 0
 local y = 0
 local z = 0
 
-local FACING = {PX=0, NX=1, PZ=2, NZ=3}
+local FACING = {PX=0, PZ=1, NX=2, NZ=3}
 
 local tfacing = FACING.PX
 
@@ -66,12 +66,18 @@ function goBack()
     return didGo
 end
 
+function rotateLeft(facing)
+    return (tfacing - 1 + 4) % 4 -- Add 4 in case we end up negative
+end
+
+function rotateRight(facing)
+    return (tfacing + 1) % 4
+end
+
 function turnRight()
     local didTurn = turtle.turnRight()
     if didTurn then
-        local newFacing = (tfacing + 1 + 4) % 4
-        
-        tfacing = newFacing
+        tfacing = rotateRight(tfacing)
     end
 
     return didTurn
@@ -80,9 +86,7 @@ end
 function turnLeft()
     local didTurn = turtle.turnLeft()
     if didTurn then
-        local newFacing = (tfacing + 1 + 4) % 4
-
-        tfacing = newFacing
+        tfacing = rotateLeft(tfacing)
     end
 
     return didTurn
@@ -109,37 +113,82 @@ function printState()
     term.write("Relative pos X Y Z: " .. x .. " " .. y .. " " .. z)
     term.setCursorPos(1, 2)
     term.write("Relative facing: " .. facingToText(tfacing))
+    termn.setCursorPos(1, 3)
+    term.write()
 end
 
+-- suck twice and check if couldn't suck. In that case, empty
+function suckDownProcedure()
+    turtle.suckDown()
+    local didSuck, reason = turtle.suckDown()
 
+    if string.find(reason, "space") then -- no space, must go empty stuff
+        goEmpty()
+    end
+end
 
-local length = 15
+function goEmpty()
+    local old_x = x
+    local old_y = y
+    local old_z = z
+    local old_facing = facing
+
+    -- Go back to the corner of the quarry. There will be a chest on top.
+
+    -- Then empty the items there and go back to digging
+    turtle.
+end
+
+function uTurnRight()
+    turnRight()
+    goForward()
+    turnRight()
+end
+
+function uTurnLeft()
+    turnLeft()
+    goForward()
+    turnLeft()
+end
+
+local length = 15 -- must be 
 local width = 15
 local height = 15
 
-while true do
+while x != length and y != height and z != width do
     printState()
-    if x >= length and tfacing == FACING.PX then
+    if x == length - 1 and z == width - 1 and tfacing == FACING.PX then -- reached a corner, should now start digging the other way
+        turnLeft()
+        for i = 0, width, 1 do goForward() end
+        turnLeft()
+        for i = 0, length, 1 do goForward() end
+        turnLeft()
+        turnLeft()
+        goDown()
+    elseif x == 0 and z == width - 1 and tfacing == FACING.NX then -- reached a corner, should now start digging the other way
+        turnRight()
+        for i = 0, width, 1 do goForward() end
+        turnRight()
+        goDown()
+    elseif x + 1 >= length and tfacing == FACING.PX then
         -- Have to right
         turtle.digDown()
-        turtle.suckUp()
-        turnRight()
-        goForward()
-        turnRight()
+        suckDownProcedure()
+        uTurnRight()
     elseif x <= 0 and tfacing == FACING.NX then
         -- Have to turn left
         turtle.digDown()
-        turtle.suckUp()
-        turnLeft()
-        goForward()
-        turnLeft()
+        suckDownProcedure()
+        uTurnLeft()
     else
         -- Dig and suck, then move forward and turn if necessary
         turtle.digDown()
-        turtle.suckDown()
+        suckDownProcedure()
 
         goForward()
     end
 end
+
+-- Done digging, go back up
 
 os.sleep(5)
